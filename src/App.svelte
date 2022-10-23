@@ -7,18 +7,22 @@
   import Text from "./Text.svelte";
   import Drawing from "./Drawing.svelte";
   import DrawingCanvas from "./DrawingCanvas.svelte";
-  import prepareAssets, { fetchFont } from "./utils/prepareAssets.js";
+  import prepareAssets, { fetchFont,Icons } from "./utils/prepareAssets.js";
   import {
     readAsArrayBuffer,
     readAsImage,
     readAsPDF,
     readAsDataURL
   } from "./utils/asyncReader.js";
+  import axios from 'axios'
   import { ggID } from "./utils/helper.js";
   import { save } from "./utils/PDF.js";
+  import createGuest from "cross-domain-storage/guest";
+  import createHost  from "cross-domain-storage/host";
   const genID = ggID();
   let pdfFile;
   let pdfName = "";
+  let iconName = "";
   let pages = [];
   let pagesScale = [];
   let allObjects = [];
@@ -27,10 +31,30 @@
   let selectedPageIndex = -1;
   let saving = false;
   let addingDrawing = false;
+  let formId;
+
+  
+
+var storageHost = createHost([
+  {
+    origin: "http://localhost:5000",
+    allowedMethods: ["get", "set", "remove"],
+  },
+  {
+    origin: "http://localhost:3000",
+    allowedMethods: ["get"],
+  },
+]);
+
   // for test purpose
   onMount(async () => {
     try {
-      const res = await fetch("/test.pdf");
+      const urlParams = new URLSearchParams(window.location.search);
+      formId = urlParams.get("form")
+      const fetchPdf = await axios(`https://api.ebps.smartnagar.org/api/v1/form/${formId}/details`)
+      const fetchPdfResponse = await fetchPdf.data
+      const res = await fetch("data:application/pdf;base64," + fetchPdfResponse.base64)
+ 
       const pdfBlob = await res.blob();
       await addPDF(pdfBlob);
       selectedPageIndex = 0;
@@ -38,10 +62,6 @@
         fetchFont(currentFont);
         prepareAssets();
       }, 5000);
-      // const imgBlob = await (await fetch("/test.jpg")).blob();
-      // addImage(imgBlob);
-      // addTextField("測試!");
-      // addDrawing(200, 100, "M30,30 L100,50 L50,70", 0.5);
     } catch (e) {
       console.log(e);
     }
@@ -81,6 +101,31 @@
     }
     e.target.value = null;
   }
+
+  function blobToFile(theBlob, fileName){
+    //A Blob() is almost a File() - it's just missing the two properties below which we will add
+    theBlob.lastModifiedDate = new Date();
+    theBlob.name = fileName;
+    return theBlob;
+}
+
+  async function onUploadIcon(e) {
+      try {
+        const res = await fetch(e.target.value);
+      const pdfBlob = await res.blob();
+
+var myFile =await  blobToFile(pdfBlob, "my-image.png");
+
+      iconName = e.target.value
+    if (myFile && selectedPageIndex >= 0) {
+      addImage(myFile);
+    }
+    e.target.value = null;
+    } catch(e) {
+    e.target.value = null;
+    }
+  }
+  
   async function addImage(file) {
     try {
       // get dataURL to prevent canvas from tainted
@@ -105,12 +150,12 @@
       console.log(`Fail to add image.`, e);
     }
   }
-  function onAddTextField() {
+  function onAddTextField(xPostiton,y) {
     if (selectedPageIndex >= 0) {
-      addTextField();
+      addTextField("New Text Field",xPostiton,y);
     }
   }
-  function addTextField(text = "New Text Field") {
+  function addTextField(text = "New Text Field",xPostiton,y) {
     const id = genID();
     fetchFont(currentFont);
     const object = {
@@ -128,6 +173,7 @@
       pIndex === selectedPageIndex ? [...objects, object] : objects
     );
   }
+
   function onAddDrawing() {
     if (selectedPageIndex >= 0) {
       addingDrawing = true;
@@ -157,6 +203,8 @@
   }
   function selectPage(index) {
     selectedPageIndex = index;
+    // onAddTextField();
+
   }
   function updateObject(objectId, payload) {
     allObjects = allObjects.map((objects, pIndex) =>
@@ -182,13 +230,23 @@
     if (!pdfFile || saving || !pages.length) return;
     saving = true;
     try {
-      await save(pdfFile, allObjects, pdfName, pagesScale);
+      await save(pdfFile, allObjects, pdfName, pagesScale,formId);
     } catch (e) {
       console.log(e);
     } finally {
       saving = false;
     }
   }
+
+
+  function getClickPosition(e) {
+    // debugger
+    // var xPosition = e.clientX / 2 -80;
+    // var yPosition = e.clientY- 80;
+    // console.log(xPosition, yPosition);
+    // onAddTextField(xPosition, yPosition)
+
+}
 </script>
 
 <svelte:window
@@ -212,12 +270,6 @@
       name="image"
       class="hidden"
       on:change={onUploadImage} />
-    <label
-      class="whitespace-no-wrap bg-blue-500 hover:bg-blue-700 text-white
-      font-bold py-1 px-3 md:px-4 rounded mr-3 cursor-pointer md:mr-4"
-      for="pdf">
-      Choose PDF
-    </label>
     <div
       class="relative mr-3 flex h-8 bg-gray-400 rounded-sm overflow-hidden
       md:mr-4">
@@ -247,6 +299,18 @@
         <img src="gesture.svg" alt="An icon for adding drawing" />
       </label>
     </div>
+    <div class="justify-center my-3 mr-3 md:mr-3 w-200 max-w-xs hidden md:flex">
+      <select
+      name="iconName"
+        placeholder="Select Icons"
+        type="text"
+        class="flex-grow bg-transparent"
+       on:change={onUploadIcon} >
+        <option value="null">Select Icons</option>
+        <option value="/check.svg">Check</option>
+        <option value="/radio.svg">Radio</option>
+        </select>
+    </div>
     <div class="justify-center mr-3 md:mr-4 w-full max-w-xs hidden md:flex">
       <img src="/edit.svg" class="mr-2" alt="a pen, edit pdf name" />
       <input
@@ -263,10 +327,11 @@
       class:bg-blue-700={pages.length === 0 || saving || !pdfFile}>
       {saving ? 'Saving' : 'Save'}
     </button>
-    <a href="https://github.com/ShizukuIchi/pdf-editor">
+    <a href="http://localhost:3000">
       <img
-        src="/GitHub-Mark-32px.png"
-        alt="A GitHub icon leads to personal GitHub page" />
+      style="width:2.1rem;height:2.1rem;"
+        src="/logo.png"
+        alt="Ebps" />
     </a>
   </div>
   {#if addingDrawing}

@@ -73,6 +73,11 @@ export const Fonts = {
   },
 };
 
+export const Icons = {
+  check: "/check.svg",
+  dot: '/dot.svg'
+}
+
 export function fetchFont(name) {
   if (fonts[name]) return fonts[name];
   const font = Fonts[name];

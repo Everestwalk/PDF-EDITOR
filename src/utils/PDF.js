@@ -1,16 +1,17 @@
-import { readAsArrayBuffer } from './asyncReader.js';
-import { fetchFont, getAsset } from './prepareAssets';
-import { noop } from './helper.js';
-
-export async function save(pdfFile, objects, name) {
-  const PDFLib = await getAsset('PDFLib');
-  const download = await getAsset('download');
-  const makeTextPDF = await getAsset('makeTextPDF');
+import { readAsArrayBuffer } from "./asyncReader.js";
+import { fetchFont, getAsset } from "./prepareAssets";
+import { noop } from "./helper.js";
+import axios from "axios";
+export async function save(pdfFile, objects, name,pagesScale,formId) {
+  const urlParams = new URLSearchParams(window.location.search);
+  const PDFLib = await getAsset("PDFLib");
+  const download = await getAsset("download");
+  const makeTextPDF = await getAsset("makeTextPDF");
   let pdfDoc;
   try {
     pdfDoc = await PDFLib.PDFDocument.load(await readAsArrayBuffer(pdfFile));
   } catch (e) {
-    console.log('Failed to load PDF.');
+    console.log("Failed to load PDF.");
     throw e;
   }
   const pagesProcesses = pdfDoc.getPages().map(async (page, pageIndex) => {
@@ -18,11 +19,11 @@ export async function save(pdfFile, objects, name) {
     // 'y' starts from bottom in PDFLib, use this to calculate y
     const pageHeight = page.getHeight();
     const embedProcesses = pageObjects.map(async (object) => {
-      if (object.type === 'image') {
+      if (object.type === "image") {
         let { file, x, y, width, height } = object;
         let img;
         try {
-          if (file.type === 'image/jpeg') {
+          if (file.type === "image/jpeg") {
             img = await pdfDoc.embedJpg(await readAsArrayBuffer(file));
           } else {
             img = await pdfDoc.embedPng(await readAsArrayBuffer(file));
@@ -35,10 +36,10 @@ export async function save(pdfFile, objects, name) {
               height,
             });
         } catch (e) {
-          console.log('Failed to embed image.', e);
+          console.log("Failed to embed image.", e);
           return noop;
         }
-      } else if (object.type === 'text') {
+      } else if (object.type === "text") {
         let { x, y, lines, lineHeight, size, fontFamily, width } = object;
         const height = size * lineHeight * lines.length;
         const font = await fetchFont(fontFamily);
@@ -51,7 +52,7 @@ export async function save(pdfFile, objects, name) {
             height,
             font: font.buffer || fontFamily, // built-in font family
             dy: font.correction(size, lineHeight),
-          }),
+          })
         );
         return () =>
           page.drawPage(textPage, {
@@ -60,7 +61,7 @@ export async function save(pdfFile, objects, name) {
             x,
             y: pageHeight - y - height,
           });
-      } else if (object.type === 'drawing') {
+      } else if (object.type === "drawing") {
         let { x, y, path, scale } = object;
         const {
           pushGraphicsState,
@@ -74,7 +75,7 @@ export async function save(pdfFile, objects, name) {
           page.pushOperators(
             pushGraphicsState(),
             setLineCap(LineCapStyle.Round),
-            setLineJoin(LineJoinStyle.Round),
+            setLineJoin(LineJoinStyle.Round)
           );
           page.drawSvgPath(path, {
             borderWidth: 5,
@@ -93,9 +94,22 @@ export async function save(pdfFile, objects, name) {
   await Promise.all(pagesProcesses);
   try {
     const pdfBytes = await pdfDoc.save();
-    download(pdfBytes, name, 'application/pdf');
+    const base64String = btoa(
+      [].reduce.call(
+        new Uint8Array(pdfBytes),
+        function (p, c) {
+          return p + String.fromCharCode(c);
+        },
+        ""
+      )
+    );
+    // const resp = await axios.post("http://192.168.1.83:8000/base64", {
+    //   base64: base64String,
+    // });
+    localStorage.setItem("base64", base64String);
+    window.location.href = "http://localhost:3000/designerdashboarditem/newapplication?form="+urlParams.get('form') + "&pdf=true";
   } catch (e) {
-    console.log('Failed to save PDF.');
+    console.log("Failed to save PDF.");
     throw e;
   }
 }
