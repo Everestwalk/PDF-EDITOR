@@ -37,11 +37,11 @@
 
 var storageHost = createHost([
   {
-    origin: "http://localhost:5000",
+    origin: "https://pdf-editor.smartnagar.org",
     allowedMethods: ["get", "set", "remove"],
   },
   {
-    origin: "http://localhost:3000",
+    origin: "https://ebps.smartnagar.org",
     allowedMethods: ["get"],
   },
 ]);
