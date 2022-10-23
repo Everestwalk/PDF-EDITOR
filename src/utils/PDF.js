@@ -107,7 +107,7 @@ export async function save(pdfFile, objects, name,pagesScale,formId) {
     //   base64: base64String,
     // });
     localStorage.setItem("base64", base64String);
-    window.location.href = "http://localhost:3000/designerdashboarditem/newapplication?form="+urlParams.get('form') + "&pdf=true";
+    window.location.href = "https://ebps.smartnagar.org/designerdashboarditem/newapplication?form="+urlParams.get('form') + "&pdf=true";
   } catch (e) {
     console.log("Failed to save PDF.");
     throw e;

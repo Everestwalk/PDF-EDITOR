@@ -327,7 +327,7 @@ var myFile =await  blobToFile(pdfBlob, "my-image.png");
       class:bg-blue-700={pages.length === 0 || saving || !pdfFile}>
       {saving ? 'Saving' : 'Save'}
     </button>
-    <a href="http://localhost:3000">
+    <a href="https://ebps.smartnagar.org">
       <img
       style="width:2.1rem;height:2.1rem;"
         src="/logo.png"
