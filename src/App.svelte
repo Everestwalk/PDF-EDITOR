@@ -37,11 +37,13 @@
 
 var storageHost = createHost([
   {
-    origin: "https://pdf-editor.smartnagar.org",
+    origin: "http://localhost:5000",
+    // origin: "https://pdf-editor.smartnagar.org",
     allowedMethods: ["get", "set", "remove"],
   },
   {
-    origin: "https://ebps.smartnagar.org",
+    origin: "http://localhost:3000",
+    // origin: "https://ebps.smartnagar.org",
     allowedMethods: ["get"],
   },
 ]);
@@ -51,7 +53,8 @@ var storageHost = createHost([
     try {
       const urlParams = new URLSearchParams(window.location.search);
       formId = urlParams.get("form")
-      const fetchPdf = await axios(`https://api.ebps.smartnagar.org/api/v1/form/${formId}/details`)
+      const fetchPdf = await axios(`http://localhost:3001/api/v1/form/${formId}/details`)
+      // const fetchPdf = await axios(`https://api.ebps.smartnagar.org/api/v1/form/${formId}/details`)
       const fetchPdfResponse = await fetchPdf.data
       const res = await fetch("data:application/pdf;base64," + fetchPdfResponse.base64)
  
@@ -327,7 +330,8 @@ var myFile =await  blobToFile(pdfBlob, "my-image.png");
       class:bg-blue-700={pages.length === 0 || saving || !pdfFile}>
       {saving ? 'Saving' : 'Save'}
     </button>
-    <a href="https://ebps.smartnagar.org">
+    <a href="http://localhost:3000">
+    <!-- <a href="https://ebps.smartnagar.org"> -->
       <img
       style="width:2.1rem;height:2.1rem;"
         src="/logo.png"

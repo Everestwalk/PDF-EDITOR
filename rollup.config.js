@@ -34,6 +34,7 @@ export default {
     !production && serve(),
     !production && livereload('public'),
     production && terser(),
+    
   ],
   watch: {
     clearScreen: false,
